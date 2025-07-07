@@ -1,0 +1,51 @@
+# Include important documentation files
+include README.md
+include LICENSE
+include requirements.txt
+include requirements-dev.txt
+include MANIFEST.in
+
+# Include configuration files
+recursive-include config *.yaml *.yml
+
+# Include package data
+recursive-include src *.py
+
+# Include documentation
+recursive-include docs *.md *.rst *.txt
+recursive-include docs *.png *.jpg *.gif
+
+# Include notebooks (but not checkpoints)
+recursive-include notebooks *.ipynb
+exclude notebooks/.ipynb_checkpoints/*
+
+# Include test files
+recursive-include tests *.py
+
+# Include scripts
+recursive-include scripts *.py
+
+# Include GitHub workflows
+recursive-include .github *.yml *.yaml
+
+# Include Docker files
+include docker/Dockerfile
+include docker/docker-compose.yml
+
+# Exclude compiled Python files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__/*
+
+# Exclude development and temporary files
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+global-exclude .DS_Store
+global-exclude Thumbs.db
+
+# Exclude large data files
+prune data/raw
+prune data/processed
+prune data/models
+prune results 

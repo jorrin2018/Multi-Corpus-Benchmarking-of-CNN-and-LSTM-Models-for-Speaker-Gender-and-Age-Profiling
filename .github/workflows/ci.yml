@@ -1,0 +1,312 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10']
+        exclude:
+          # Excluir algunas combinaciones para acelerar CI
+          - os: windows-latest
+            python-version: '3.8'
+          - os: macos-latest
+            python-version: '3.8'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsndfile1 ffmpeg sox libsox-fmt-all
+    
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install libsndfile ffmpeg sox
+    
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # FFmpeg y sox via chocolatey
+        choco install ffmpeg
+        # Nota: libsndfile se instala via pip wheel en Windows
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+    
+    - name: Lint with flake8
+      run: |
+        # Detener el build si hay errores de sintaxis o nombres no definidos
+        flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Advertencias por complejidad y estilo (no fallar)
+        flake8 src --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+    
+    - name: Type checking with mypy
+      run: |
+        mypy src --ignore-missing-imports --strict-optional
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage to Codecov
+      if: runner.os == 'Linux' && matrix.python-version == '3.9'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsndfile1 ffmpeg sox libsox-fmt-all
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v --tb=short
+    
+    - name: Test script execution
+      run: |
+        # Verificar que los scripts principales se ejecutan sin errores
+        python scripts/train.py --help
+        python scripts/evaluate.py --help
+        python scripts/predict.py --help
+        python scripts/benchmark.py --help
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+    
+    - name: Run safety check
+      run: |
+        safety check --json --output safety-report.json || true
+    
+    - name: Run bandit security scan
+      run: |
+        bandit -r src -f json -o bandit-report.json || true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          safety-report.json
+          bandit-report.json
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsndfile1 ffmpeg sox libsox-fmt-all
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+    
+    - name: Run performance benchmarks
+      run: |
+        pytest tests/performance/ -v --benchmark-only --benchmark-json=benchmark.json
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark.json
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build CPU Docker image
+      run: |
+        docker build -f docker/Dockerfile.cpu -t speaker-profiling:cpu-test .
+    
+    - name: Test Docker image
+      run: |
+        docker run --rm speaker-profiling:cpu-test python -c "import speaker_profiling; print('✅ Docker image works')"
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+    
+    - name: Check documentation
+      run: |
+        # Verificar que la documentación está actualizada
+        python -c "
+        import ast
+        import sys
+        from pathlib import Path
+        
+        # Verificar que todos los módulos tienen docstrings
+        missing_docs = []
+        for py_file in Path('src').rglob('*.py'):
+            if py_file.name == '__init__.py':
+                continue
+            try:
+                with open(py_file, 'r', encoding='utf-8') as f:
+                    tree = ast.parse(f.read())
+                    if not ast.get_docstring(tree):
+                        missing_docs.append(str(py_file))
+            except:
+                pass
+        
+        if missing_docs:
+            print('❌ Archivos sin docstring:')
+            for file in missing_docs:
+                print(f'  - {file}')
+            sys.exit(1)
+        else:
+            print('✅ Todos los módulos tienen documentación')
+        "
+    
+    - name: Validate README and docs
+      run: |
+        # Verificar que los enlaces en README funcionan
+        python -c "
+        import re
+        from pathlib import Path
+        
+        readme_content = Path('README.md').read_text()
+        
+        # Buscar enlaces locales
+        local_links = re.findall(r'\[.*?\]\(((?!http)[^)]+)\)', readme_content)
+        
+        missing_files = []
+        for link in local_links:
+            if not Path(link).exists():
+                missing_files.append(link)
+        
+        if missing_files:
+            print('❌ Enlaces rotos en README:')
+            for file in missing_files:
+                print(f'  - {file}')
+            # No fallar por esto en CI
+        else:
+            print('✅ Todos los enlaces del README funcionan')
+        "
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test, integration-tests, security-scan, performance-tests, docker-build, documentation]
+    if: always()
+    
+    steps:
+    - name: Determine status
+      id: status
+      run: |
+        if [[ "${{ needs.test.result }}" == "success" && "${{ needs.integration-tests.result }}" == "success" ]]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "message=✅ All CI checks passed!" >> $GITHUB_OUTPUT
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=❌ Some CI checks failed" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create status summary
+      run: |
+        echo "## 🔄 CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Unit Tests | ${{ needs.test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Performance Tests | ${{ needs.performance-tests.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Build | ${{ needs.docker-build.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Documentation | ${{ needs.documentation.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "${{ steps.status.outputs.message }}" >> $GITHUB_STEP_SUMMARY 

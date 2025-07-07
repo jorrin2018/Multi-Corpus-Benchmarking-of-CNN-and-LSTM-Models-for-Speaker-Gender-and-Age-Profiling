@@ -1,0 +1,116 @@
+# Training Configuration for Speaker Profiling Benchmark
+# Based on "Multi-Corpus Benchmarking of CNN & LSTM Models for Speaker Profiling"
+
+# Global hyperparameters
+hyperparameters:
+  # Optimizer settings
+  optimizer:
+    name: "adam"
+    learning_rate: 0.001        # 1e-3
+    betas: [0.9, 0.999]        # Adam betas
+    weight_decay: 0.0001       # 1e-4
+    
+  # Learning rate scheduler
+  scheduler:
+    name: "reduce_lr_on_plateau"
+    factor: 0.5                # Reduce LR by half
+    patience: 3                # Wait 3 epochs before reducing
+    min_lr: 0.00001           # Minimum learning rate
+    
+  # Regularization
+  dropout: 0.5                 # Dropout rate
+  
+  # Training parameters
+  batch_size: 64              # Batch size
+  max_epochs: 100             # Maximum epochs
+  
+  # Early stopping
+  early_stopping:
+    patience: 15              # Stop after 15 epochs without improvement
+    monitor: "val_loss"       # Metric to monitor
+    mode: "min"              # Lower is better for loss
+    
+  # Reproducibility seeds (10 seeds for robust results)
+  seeds: [1, 12, 42, 77, 101, 128, 222, 314, 512, 999]
+
+# Two-stage training pipeline
+training_stages:
+  stage1:
+    name: "model_selection"
+    description: "Stage 1: Model selection on subset"
+    subset_size: 5000         # 5k samples per class for VoxCeleb1
+    validation_split: 0.2     # 80/20 train/val split
+    models_to_test:
+      cnn: 7                  # Test 7 CNN architectures
+      lstm: 9                 # Test 9 LSTM configurations
+    metric: "accuracy"        # Selection metric for classification
+    metric_regression: "mae"  # Selection metric for regression
+    
+  stage2:
+    name: "fine_tuning"
+    description: "Stage 2: Fine-tuning on full dataset"
+    use_full_dataset: true
+    validation_split: 0.2
+    top_models: 3             # Fine-tune top 3 CNNs + 1 LSTM
+    unfreeze_schedule:
+      - epoch: 10             # After 10 epochs
+        unfreeze_layers: 2    # Unfreeze last 2 layers
+
+# Data splitting
+data_splits:
+  train: 0.8                  # 80% training
+  validation: 0.2             # 20% validation
+  stratify: true             # Maintain class balance
+  random_state: 42           # Fixed seed for splits
+
+# Hardware and performance
+hardware:
+  device: "auto"             # Auto-detect CUDA/CPU
+  num_workers: 4             # DataLoader workers (set to 0 on Windows if issues)
+  pin_memory: true           # Pin memory for GPU training
+  mixed_precision: false     # Use automatic mixed precision (AMP)
+  
+# Logging and checkpointing
+logging:
+  log_every_n_steps: 10      # Log every 10 batches
+  save_checkpoints: true     # Save model checkpoints
+  checkpoint_every_n_epochs: 5  # Save every 5 epochs
+  save_best_only: true       # Only save best models
+  
+# Evaluation
+evaluation:
+  compute_on_test: true      # Evaluate on test set
+  save_predictions: true     # Save model predictions
+  plot_confusion_matrix: true  # Generate confusion matrices
+  statistical_tests: true   # Perform significance tests (paired t-test)
+  
+# Output directories
+output:
+  models_dir: "data/models"           # Trained models
+  logs_dir: "results/logs"            # Training logs  
+  figures_dir: "results/figures"      # Generated plots
+  benchmarks_dir: "results/benchmarks"  # Benchmark results
+
+# Dataset-specific configurations
+dataset_configs:
+  voxceleb1:
+    # Use smaller subset for quick testing
+    quick_test:
+      max_samples_per_class: 1000
+    # Full training configuration  
+    full:
+      max_samples_per_class: null  # Use all available
+      
+  common_voice:
+    # Age group mapping for 60+ category
+    age_mapping:
+      sixties: "sixties+"
+      seventies: "sixties+"
+      eighties: "sixties+"
+      nineties: "sixties+"
+    max_samples: 20000        # Limit for manageable training
+    
+  timit:
+    # Age regression settings
+    age_range: [16, 70]       # Expected age range
+    normalize_age: true       # Normalize age values 

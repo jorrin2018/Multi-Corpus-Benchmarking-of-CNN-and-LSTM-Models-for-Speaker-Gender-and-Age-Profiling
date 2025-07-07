@@ -1,0 +1,103 @@
+# Model Configuration for Speaker Profiling Benchmark
+# Based on "Multi-Corpus Benchmarking of CNN & LSTM Models for Speaker Profiling"
+
+models:
+  # CNN Models with Transfer Learning from ImageNet
+  cnn:
+    # Model architectures available
+    architectures:
+      - "mobilenet_v2"      # MobileNet-V2
+      - "efficientnet_b0"   # EfficientNet-B0  
+      - "resnet50"          # ResNet50
+      - "resnet18"          # ResNet18
+      - "vgg16"             # VGG16
+      - "alexnet"           # AlexNet
+      - "densenet121"       # DenseNet
+    
+    # Common CNN parameters
+    common:
+      pretrained: true           # Use ImageNet weights
+      input_channels: 1          # Grayscale input (conv1 adapted)
+      image_size: 224           # Input image size
+      dropout: 0.5              # Dropout rate
+      freeze_backbone: true     # Initially freeze backbone
+      unfreeze_last_layers: 2   # Unfreeze last 2 blocks for fine-tuning
+    
+    # Model-specific configurations
+    mobilenet_v2:
+      description: "Lightweight model, good for deployment"
+      
+    efficientnet_b0:
+      description: "Efficient architecture with compound scaling"
+      
+    resnet50:
+      description: "Deep residual network, strong baseline"
+      
+    resnet18:
+      description: "Lighter ResNet variant"
+      
+    vgg16:
+      description: "Classic CNN architecture"
+      
+    alexnet:
+      description: "Historic deep CNN"
+      
+    densenet121:
+      description: "Dense connections between layers"
+
+  # LSTM Models  
+  lstm:
+    # Architecture configurations
+    configs:
+      - hidden_size: 128
+        num_layers: 1
+        description: "Small LSTM"
+      - hidden_size: 128  
+        num_layers: 2
+        description: "Medium LSTM"
+      - hidden_size: 128
+        num_layers: 3
+        description: "Deep small LSTM"
+      - hidden_size: 256
+        num_layers: 1  
+        description: "Wide LSTM"
+      - hidden_size: 256
+        num_layers: 2
+        description: "Wide medium LSTM"
+      - hidden_size: 256
+        num_layers: 3
+        description: "Wide deep LSTM"
+      - hidden_size: 512
+        num_layers: 1
+        description: "Very wide LSTM"
+      - hidden_size: 512
+        num_layers: 2
+        description: "Very wide medium LSTM"
+      - hidden_size: 512
+        num_layers: 3
+        description: "Very wide deep LSTM"
+    
+    # Common LSTM parameters
+    common:
+      bidirectional: true       # Use bidirectional LSTM
+      dropout: 0.3             # LSTM dropout
+      batch_first: true        # Input format (batch, seq, features)
+      
+# Task configurations
+tasks:
+  gender_classification:
+    num_classes: 2
+    class_names: ["female", "male"]
+    loss_function: "cross_entropy"
+    metrics: ["accuracy", "precision", "recall", "f1"]
+    
+  age_classification:
+    num_classes: 6
+    class_names: ["teens", "twenties", "thirties", "fourties", "fifties", "sixties+"]
+    loss_function: "cross_entropy" 
+    metrics: ["accuracy", "precision", "recall", "f1"]
+    
+  age_regression:
+    num_outputs: 1
+    loss_function: "mse"
+    metrics: ["mae", "mse", "rmse"] 

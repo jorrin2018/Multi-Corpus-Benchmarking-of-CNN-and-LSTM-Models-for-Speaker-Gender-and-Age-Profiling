@@ -1,0 +1,56 @@
+[flake8]
+# Configuración de flake8 para el proyecto Speaker Profiling
+# Mantiene estándares de código Python consistentes
+
+# Longitud máxima de línea
+max-line-length = 100
+
+# Errores y advertencias a ignorar
+ignore = 
+    # E203: whitespace before ':' (conflicto con black)
+    E203,
+    # W503: line break before binary operator (conflicto con black)
+    W503,
+    # E501: line too long (manejado por max-line-length)
+    E501
+
+# Archivos a excluir del linting
+exclude = 
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .mypy_cache,
+    build,
+    dist,
+    *.egg-info,
+    .venv,
+    venv,
+    .env
+
+# Directorios de aplicación
+application-import-names = speaker_profiling,src
+
+# Importaciones que se consideran locales
+import-order-style = google
+
+# Complejidad ciclomática máxima
+max-complexity = 15
+
+# Configuraciones específicas por tipo de archivo
+per-file-ignores =
+    # Los archivos __init__.py pueden tener importaciones no usadas
+    __init__.py:F401,F403,
+    # Los archivos de configuración pueden tener líneas largas
+    */config/*.py:E501,
+    # Los tests pueden tener líneas largas y funciones complejas
+    tests/*.py:E501,C901,
+    # Scripts pueden tener mayor complejidad
+    scripts/*.py:C901
+
+# Configuración de docstrings
+docstring-convention = google
+
+# Verificar documentación
+require-plugins = 
+    flake8-docstrings,
+    flake8-import-order 

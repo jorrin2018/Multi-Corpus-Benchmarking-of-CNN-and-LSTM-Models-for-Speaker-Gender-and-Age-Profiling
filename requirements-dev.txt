@@ -1,0 +1,37 @@
+# Development dependencies (includes all from requirements.txt)
+-r requirements.txt
+
+# Additional development tools
+jupyter-lab>=3.0.0
+notebook>=6.4.0
+
+# Advanced testing
+pytest-xdist>=2.5.0  # Parallel testing
+pytest-mock>=3.6.0   # Mocking utilities
+coverage>=6.0.0      # Coverage analysis
+
+# Code formatting and linting
+mypy>=0.910           # Type checking
+bandit>=1.7.0         # Security linting  
+pylint>=2.12.0        # Advanced linting
+
+# Documentation building
+nbsphinx>=0.8.0       # Jupyter notebook integration
+sphinx-autodoc-typehints>=1.12.0
+
+# Git hooks and pre-commit
+pre-commit>=2.15.0
+
+# Profiling and debugging
+memory-profiler>=0.60.0
+line-profiler>=3.3.0
+
+# Environment management
+python-dotenv>=0.19.0
+
+# API documentation
+pdoc>=8.0.0
+
+# Advanced visualization for development
+plotly>=5.0.0
+bokeh>=2.4.0 

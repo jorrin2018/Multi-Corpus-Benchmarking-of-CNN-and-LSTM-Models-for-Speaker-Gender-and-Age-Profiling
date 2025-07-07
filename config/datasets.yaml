@@ -1,0 +1,76 @@
+# Dataset Configuration for Speaker Profiling Benchmark
+# Based on "Multi-Corpus Benchmarking of CNN & LSTM Models for Speaker Profiling"
+
+datasets:
+  voxceleb1:
+    name: "VoxCeleb1"
+    speakers:
+      female: 563
+      male: 688
+      total: 1251
+    recording_type: "in-the-wild"
+    original_sample_rate: 16000
+    target_sample_rate: 16000
+    labels: ["gender"]
+    notes: "High variability and noise"
+    features:
+      n_mels: 224
+      n_mfcc: 40
+    # Paths (to be configured by user)
+    data_dir: null  # Set this to your VoxCeleb1 directory
+    metadata_file: null  # Optional metadata file
+    
+  common_voice:
+    name: "Common Voice 17.0"
+    speakers:
+      female: 2953
+      male: 10107  
+      total: 13060
+    recording_type: "crowdsourced"
+    original_sample_rate: 44100
+    target_sample_rate: 22050
+    labels: ["gender", "age"]
+    notes: "60+ languages; only English used"
+    age_groups: ["teens", "twenties", "thirties", "fourties", "fifties", "sixties+"]
+    features:
+      n_mels: 128
+      n_mfcc: 13
+    # Paths (to be configured by user)
+    data_dir: null  # Set this to your Common Voice directory 
+    audio_dir: null  # Set this to clips directory
+    
+  timit:
+    name: "TIMIT"
+    speakers:
+      female: 192
+      male: 438
+      total: 630
+    recording_type: "studio"
+    original_sample_rate: 16000
+    target_sample_rate: 16000
+    labels: ["gender", "age"]
+    notes: "8 US dialects"
+    age_type: "continuous"  # Real-valued age
+    features:
+      n_mels: 64
+      n_mfcc: 13
+    # Paths (to be configured by user)
+    data_dir: null  # Set this to your TIMIT directory
+
+# Common preprocessing parameters
+preprocessing:
+  # Silence removal
+  silence_threshold: 0.075  # Adaptive threshold (range 0.05-0.10)
+  
+  # Pre-emphasis filter
+  preemphasis_coeff: 0.97  # y[t] = x[t] - 0.97*x[t-1]
+  
+  # Butterworth filter
+  butterworth_order: 10
+  butterworth_cutoff: 4000  # 4 kHz cutoff frequency
+  
+  # Energy normalization (Z-score)
+  normalize_energy: true
+  
+  # Audio duration for normalization
+  target_duration: 3.0  # seconds 
